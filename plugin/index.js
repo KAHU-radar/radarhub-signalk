@@ -29,7 +29,7 @@ module.exports = (app) => {
       console.log("Started KAHU radar Hub")
 
       plugin.cache = new Routecache(
-        path.join(packageDir, "data", "migrations"),
+        path.join(packageDir, "data", "protocol", "migrations"),
         path.join(app.getDataDirPath(), "routecache.sqlite3"));
       await plugin.cache.init();
       

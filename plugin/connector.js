@@ -27,6 +27,7 @@ class Connector {
     this.schema_file = path.join(
       plugin_dir,
       "data",
+      "protocol",
       "proto_avro.json");
     this.schema = null;
     console.error("Connector created");

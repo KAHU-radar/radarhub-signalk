@@ -1,0 +1,3 @@
+[submodule "data/protocol"]
+	path = data/protocol
+	url = https://github.com/KAHU-radar/radarhub-protocol.git
