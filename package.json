@@ -1,6 +1,6 @@
 {
   "name": "radarhub-signalk",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Contribute AIS and ARPA targets from your vessel to crowdsourcing for marine safety!",
   "keywords": [
     "signalk-node-server-plugin",
@@ -13,6 +13,9 @@
     "displayName": "KAHU Radar Hub"
   },
   "main": "plugin/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -22,6 +25,7 @@
     "avro-js": "^1.12.0",
     "promise-socket": "^8.0.0",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "uuid": "^8.1.0"
   }
 }

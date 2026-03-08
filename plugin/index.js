@@ -60,14 +60,20 @@ module.exports = (app) => {
             }
             
             const target_id = parseInt(match[1]);
-            const target_distance = parseInt(match[2]);
-            const target_bearing = parseInt(match[3]);
+            const target_distance = parseFloat(match[2]);
+            const target_bearing = parseFloat(match[3]);
             const target_bearing_unit = match[4];
 
-            if (target_bearing_unit == 'R')
-              throw "Relative bearings not yet supported";
+            if (target_bearing_unit === 'R') {
+              console.warn("Relative bearings not yet supported, skipping RATTM sentence");
+              return;
+            }
             
-            const ownPos = app.getSelfPath("navigation.position").value;
+            const ownPos = app.getSelfPath("navigation.position")?.value;
+            if (!ownPos) {
+              console.warn("No own-ship position available, skipping RATTM sentence");
+              return;
+            }
             const targetPos = polar2Pos(ownPos, target_bearing, target_distance);
             
             const relative = {
@@ -78,8 +84,8 @@ module.exports = (app) => {
               distance_unit: match[10],
             }
 
-            const target_speed = parseInt(match[5]);
-            const target_course = parseInt(match[6]);
+            const target_speed = parseFloat(match[5]);
+            const target_course = parseFloat(match[6]);
             const target_course_unit = match[7];
             // target_distance_closes_point_of_approac: parseInt(match[8]),
             // target_time_closes_point_of_approac: parseInt(match[9]),

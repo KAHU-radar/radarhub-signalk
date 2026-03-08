@@ -182,11 +182,11 @@ wanting to build a more elaborate server-side setup.
 
 ---
 
-## Current Runtime Environment
+## Runtime Requirements
 
-- **Signal K Server:** v2.13.5
-- **Node.js:** 18.x
-- **Dependencies:** avro-js, promise-socket, sqlite/sqlite3
+- **Signal K Server:** v2.22.1+ (latest stable)
+- **Node.js:** 20.x or later (required by Signal K server v2.22+)
+- **Dependencies:** avro-js, promise-socket, sqlite/sqlite3, uuid
 
 ---
 
