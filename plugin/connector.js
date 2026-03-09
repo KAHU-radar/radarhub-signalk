@@ -128,8 +128,8 @@ class Connector {
       }
     });
     
-    this.read("kahu.SubmitResponseMessage");
-    this.routecache.markAsSent(submit);
+    await this.read("kahu.SubmitResponseMessage");
+    await this.routecache.markAsSent(submit);
     this.last_track_sent = new Date();
     console.log("Tracks sent");
     await this.updateStats();

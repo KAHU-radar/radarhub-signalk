@@ -1,14 +1,14 @@
 const net = require("net");
 const { delay } = require('./utils');
 
-_PromiseSocket = null;
+let _PromiseSocket = null;
 async function getPromiseSocket() {
   if (_PromiseSocket === null) {
     const { PromiseSocket } = await import('promise-socket');
     _PromiseSocket = PromiseSocket;
   }
   return _PromiseSocket;
-};
+}
 
 class SocketException extends Error {
   constructor(exc, attempt) {
@@ -89,7 +89,7 @@ class TCPClient {
       this.setStatus("Logged in");
       this.reconnect_time = this.min_reconnect_time;
     } catch (e) {
-      this.connectionFailure(e, "Unsable to connect");
+      this.connectionFailure(e, "Unable to connect");
     }
   }
 
@@ -119,9 +119,9 @@ class TCPClient {
 
   async waitAndSendInitial(data) {
     while (!this.cancelled) {
-      this.ensureConnection();
+      await this.ensureConnection();
       try {
-        this.send(data);
+        await this.send(data);
         return;
       } catch (e) {
         console.error(e.toString());
@@ -145,8 +145,8 @@ class TCPClient {
   }
 
   consume(size) {
-    if (this.buffer_size < size) {
-      throw "Not enough data in buffer";
+    if (this.buffer.length < size) {
+      throw new Error("Not enough data in buffer");
     }
     this.buffer = this.buffer.subarray(size);
   }
