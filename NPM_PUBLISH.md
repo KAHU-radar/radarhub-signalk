@@ -84,3 +84,8 @@ Internal notes for cutting a new public release to npm using GitHub Actions trus
 
 - Do **not** reuse a version once published; always bump `X.Y.Z`.
 - `NPM_PUBLISH.md` is excluded from the npm package via `.npmignore`.
+-  in package.json 
+   "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+    // exit 1 to fail the build exit 0 to pass the build
+  },
