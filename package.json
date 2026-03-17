@@ -26,7 +26,7 @@
     "avro-js": "^1.12.0",
     "promise-socket": "^8.0.0",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
+    "sqlite3": "^6.0.1",
     "uuid": "^8.1.0"
   }
 }
