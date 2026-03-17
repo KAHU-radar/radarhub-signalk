@@ -1,0 +1,5 @@
+.github/
+*.log
+npm-debug.log*
+NPM_PUBLISH.md 
+
