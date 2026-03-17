@@ -100,7 +100,7 @@ A `$RATTM` sentence contains:
 
 ```bash
 # From your Signal K server's plugin directory
-npm install radarhub-signalk
+npm install kahu-signalk
 
 # Or clone and link for development
 git clone --recurse-submodules https://github.com/KAHU-radar/radarhub-signalk.git
@@ -108,7 +108,7 @@ cd radarhub-signalk
 npm install
 npm link
 # Then from your Signal K server directory:
-signalk-server --install radarhub-signalk
+signalk-server --install kahu-signalk
 ```
 
 **Note:** The `data/protocol` folder is a git submodule. If you cloned without `--recurse-submodules`, run:
