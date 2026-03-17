@@ -185,8 +185,45 @@ wanting to build a more elaborate server-side setup.
 ## Runtime Requirements
 
 - **Signal K Server:** v2.22.1+ (latest stable)
-- **Node.js:** 20.x or later (required by Signal K server v2.22+)
+- **Node.js:** 20.x or later (required by Signal K server v2.22+). **Node 22 is recommended** by Signal K; Node 24 can cause native addon issues.
 - **Dependencies:** avro-js, promise-socket, sqlite/sqlite3, uuid
+
+---
+
+## Troubleshooting
+
+### "Could not locate the bindings file" (sqlite3)
+
+The plugin uses the **sqlite3** npm package, which includes **native C++ bindings** that must be compiled for your Node.js version and OS. This error usually means:
+
+1. **Node version mismatch** — You're on Node 24; Signal K recommends **Node 22**. The sqlite3 prebuilds may not exist for Node 24, so the native module was never built.
+2. **Bindings not built** — When the plugin is installed under Signal K (e.g. in `~/.signalk/node_modules/`), `sqlite3` must compile or download a matching binary.
+
+**Fix options:**
+
+- **Use Node 22 (recommended):**  
+  Install and use Node 22 (see [Signal K’s Node.js guide](https://github.com/SignalK/signalk-server/wiki/Installing-and-Updating-Node.js)), then reinstall or rebuild the plugin so sqlite3 is built for Node 22.
+
+- **Rebuild sqlite3 for your current Node:**  
+  From the directory where Signal K installs plugin dependencies (often `~/.signalk`), run:
+  ```bash
+  cd ~/.signalk && npm rebuild sqlite3
+  ```
+  You need build tools installed (e.g. `build-essential`, `python3`, and on some systems `node-gyp`).
+
+- **If you use a custom config dir:**  
+  If you run Signal K with `--config-dir /path/to/config`, plugin dependencies may live under that config dir. Rebuild there instead:
+  ```bash
+  cd /path/to/config && npm rebuild sqlite3
+  ```
+
+### Command typo
+
+Use `--config-dir` (with an **n**), not `--confic-dir`:
+```bash
+npm start -- --config-dir /home/bs01743/Projects/KAHU/signalk-server/signalk-server/config
+```
+The `--` is needed so npm passes `--config-dir` to the start script.
 
 ---
 
