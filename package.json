@@ -1,6 +1,6 @@
 {
   "name": "kahu-signalk",
-  "version": "0.0.7",
+  "version": "0.0.6",
   "description": "Contribute AIS and ARPA targets from your vessel to crowdsourcing for marine safety!",
   "keywords": [
     "signalk-node-server-plugin",
