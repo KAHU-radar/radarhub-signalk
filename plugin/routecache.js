@@ -1,7 +1,22 @@
-const sqlite3 = require('sqlite3').verbose();
-const sqlite = require('sqlite');
 const fs = require('fs').promises;
 const path = require('path');
+
+let DatabaseSync;
+try {
+  ({ DatabaseSync } = require('node:sqlite'));
+} catch (e) {
+  DatabaseSync = null;
+}
+
+function requireNodeSqlite() {
+  if (!DatabaseSync) {
+    throw new Error(
+      'kahu-signalk requires Node.js 22.5+ (built-in node:sqlite). ' +
+      'Install Node 22 LTS as recommended for Signal K: ' +
+      'https://github.com/SignalK/signalk-server/wiki/Installing-and-Updating-Node.js'
+    );
+  }
+}
 
 class Routecache {
   constructor(migrations_dir, db_name) {
@@ -11,8 +26,25 @@ class Routecache {
     console.log("Routecache created for " + db_name + " with migrations " + migrations_dir);
   }
 
+  _sanitizeParam(v) {
+    return v === undefined ? null : v;
+  }
+
+  _all(sql, params = []) {
+    const stmt = this.db.prepare(sql);
+    const safe = params.map(this._sanitizeParam);
+    return safe.length ? stmt.all(...safe) : stmt.all();
+  }
+
+  _run(sql, params = []) {
+    const stmt = this.db.prepare(sql);
+    const safe = params.map(this._sanitizeParam);
+    return safe.length ? stmt.run(...safe) : stmt.run();
+  }
+
   async init() {
     try {
+      requireNodeSqlite();
       await this.openDB();
       await this.createEmpty();
       await this.migrate();
@@ -30,33 +62,30 @@ class Routecache {
     }
   }
 
-  async doesTableExist(tableName) {
-    const query = await this.db.all(
-      "SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name=?",
-      [tableName]);
-    return query[0].count > 0;
+  doesTableExist(tableName) {
+    const row = this.db
+      .prepare("SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name=?")
+      .get(tableName);
+    return Number(row.count) > 0;
   }
 
   async destroy() {
-    if (this.db != null) await this.db.close();
+    if (this.db != null) this.db.close();
     this.db = null;
   }
 
   async openDB() {
-    this.db = await sqlite.open({
-      filename: this.db_name,
-      driver: sqlite3.Database
-    });
+    this.db = new DatabaseSync(this.db_name);
   }
 
   async closeDB() {
-    if (this.db != null) await this.db.close();
+    if (this.db != null) this.db.close();
     this.db = null;
   }
 
   async createEmpty() {
     if (await this.doesTableExist("migrations")) return;
-    const res = await this.db.run(`
+    this.db.exec(`
         CREATE TABLE IF NOT EXISTS migrations (
             id integer,
             name text,
@@ -66,58 +95,51 @@ class Routecache {
   }
 
   async migrate() {
-    const rows = await this.db.all(
-      "SELECT max(id) as maxid FROM migrations");
+    const rows = this._all("SELECT max(id) as maxid FROM migrations");
     const maxId = rows[0].maxid;
+    const baseline = maxId == null ? 0 : Number(maxId);
 
     try {
       const files = (
-        await fs.readdir(
-          this.migrations_dir, { withFileTypes: true }
-        )
-      ).filter(
-        (file) => file.isFile()
-      ).map(
-        (file) => file.name);
+        await fs.readdir(this.migrations_dir, { withFileTypes: true })
+      )
+        .filter((file) => file.isFile())
+        .map((file) => file.name);
       files.sort();
-      
+
       for (const filename of files) {
         const migrationId = parseInt(filename, 10);
-        if (migrationId > maxId) {
-          const migrationPath = path.join(this.migrations_dir, filename);
-          await this.runMigration(migrationId, migrationPath);
-        }
+        if (!Number.isFinite(migrationId) || migrationId <= baseline) continue;
+        const migrationPath = path.join(this.migrations_dir, filename);
+        await this.runMigration(migrationId, migrationPath);
       }
     } catch (error) {
-        throw new Error(`Unable to process migrations directory: ${error.message}`);
+      throw new Error(`Unable to process migrations directory: ${error.message}`);
     }
   }
 
   async runMigration(i, name) {
     console.error("Running migration ", i, ": ", name);
 
-    const sql = await fs.readFile(name, 'utf8');    
-    await this.db.exec(sql);
-    await this.db.run(
-      "insert into migrations (id, name) values (?, ?)",
-      [i, name]);
+    const sql = await fs.readFile(name, 'utf8');
+    this.db.exec(sql);
+    this._run("insert into migrations (id, name) values (?, ?)", [i, name]);
   }
 
-  async insert({...props}) {
-    const target_count = await this.db.all(`
-      select count(*) as count from target where uuid = ?;
-    `, [props.target_id]);
-    if (target_count[0].count == 0) {
-      await this.db.run(`
-        insert into target (uuid) values (?);
-      `, [props.target_id]);
+  async insert({ ...props }) {
+    const target_count = this._all(
+      `select count(*) as count from target where uuid = ?;`,
+      [props.target_id]
+    );
+    if (Number(target_count[0].count) === 0) {
+      this._run(`insert into target (uuid) values (?);`, [props.target_id]);
     }
-    const target = await this.db.all(`
-      select target_id from target where uuid = ?;
-    `, [props.target_id]);
-    
-    await this.db.run(`
-      insert into target_position (
+    const target = this._all(`select target_id from target where uuid = ?;`, [
+      props.target_id,
+    ]);
+
+    this._run(
+      `insert into target_position (
         target_id,
         target_distance,
         target_bearing,
@@ -135,32 +157,35 @@ class Routecache {
       ) values (
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
    `,
-      [target[0].target_id,
-       props.position?.relative?.distance,
-       props.position?.relative?.bearing,
-       props.position?.relative?.bearing_unit,
-       props.speedOverGround,
-       props.courseOverGroundTrue,
-       'T', // target_course_unit
-       props.position?.relative?.distance_unit,
-       props.name,
-       'T', //props.target_status,
-       props.position?.relative?.position?.latitude,
-       props.position?.relative?.position?.longitude,
-       props.position?.latitude,
-       props.position?.longitude]);
+      [
+        target[0].target_id,
+        props.position?.relative?.distance,
+        props.position?.relative?.bearing,
+        props.position?.relative?.bearing_unit,
+        props.speedOverGround,
+        props.courseOverGroundTrue,
+        'T',
+        props.position?.relative?.distance_unit,
+        props.name,
+        'T',
+        props.position?.relative?.position?.latitude,
+        props.position?.relative?.position?.longitude,
+        props.position?.latitude,
+        props.position?.longitude,
+      ]
+    );
   }
 
   async connectionStats() {
-    const query1 = await this.db.all(`
+    const query1 = this._all(`
       select
         count(*) as unsent_datapoints
       from
         target_position
-      where       
+      where
         not sent;
       `);
-    const query2 = await this.db.all(`
+    const query2 = this._all(`
       select
         count(*) as unsent_tracks
       from
@@ -172,12 +197,14 @@ class Routecache {
            not sent
         )
     `);
-    return {unsent_datapoints: query1[0].unsent_datapoints,
-            unsent_tracks: query2[0].unsent_tracks};
+    return {
+      unsent_datapoints: Number(query1[0].unsent_datapoints),
+      unsent_tracks: Number(query2[0].unsent_tracks),
+    };
   }
-  
+
   async retrieve() {
-    const query = await this.db.all(`
+    const query = this._all(`
       select
         target.uuid,
         target_position.timestamp,
@@ -201,9 +228,9 @@ class Routecache {
                 target_id
               from
                 target_position
-              group by 
+              group by
                 target_id
-              having 
+              having
                 count(*) > 1
             )
           order by
@@ -218,19 +245,17 @@ class Routecache {
     if (!query.length) return null;
 
     const res = {
-      uuid: {"string": query[0].uuid},
+      uuid: { string: query[0].uuid },
       route: [],
       nmea: null,
-      start: query[0].timestamp_epoch};
-
-    let isfirst = true;
-    let start;
+      start: Number(query[0].timestamp_epoch),
+    };
 
     for (const row of query) {
       res.route.push({
         lat: row.target_latitude,
         lon: row.target_longitude,
-        timestamp: row.timestamp_epoch - res.start
+        timestamp: Number(row.timestamp_epoch) - res.start,
       });
     }
 
@@ -238,28 +263,32 @@ class Routecache {
   }
 
   async markAsSent(route_message) {
-    const end = route_message.route[route_message.route.length - 1].timestamp + route_message.start;
+    const end =
+      route_message.route[route_message.route.length - 1].timestamp +
+      route_message.start;
 
     const uuid = route_message.uuid.string;
-    
-    const query = await this.db.run(`
-      update
+
+    const result = this._run(
+      `update
         target_position
       set
         sent = 1
       where
         target_id = (select target_id from target where uuid = ?)
-        and timestamp <= datetime(? / 1000, 'unixepoch');
-    `, [uuid, end]);
-    
+        and timestamp <= datetime(? / 1000, 'unixepoch');`,
+      [uuid, end]
+    );
+
     console.error(
-      "Updated "
-        + query.changes
-        + " rows for "
-        + uuid
-        + " @ "
-        + end
-        + ".");
+      'Updated ' +
+        result.changes +
+        ' rows for ' +
+        uuid +
+        ' @ ' +
+        end +
+        '.'
+    );
   }
 }
 

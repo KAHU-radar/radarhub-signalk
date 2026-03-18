@@ -1,6 +1,6 @@
 {
   "name": "kahu-signalk",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Contribute AIS and ARPA targets from your vessel to crowdsourcing for marine safety!",
   "keywords": [
     "signalk-node-server-plugin",
@@ -15,9 +15,10 @@
   },
   "main": "plugin/index.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5.0"
   },
   "scripts": {
+    "preinstall": "node scripts/check-node-version.js",
     "test": "echo \"Error: no test specified passing build\" && exit 0"
   },
   "author": "Kahu <info@kahu.earth>",
@@ -29,8 +30,6 @@
   "dependencies": {
     "avro-js": "^1.12.0",
     "promise-socket": "^8.0.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^6.0.1",
     "uuid": "^8.1.0"
   }
 }
