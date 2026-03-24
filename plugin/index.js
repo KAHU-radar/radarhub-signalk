@@ -130,7 +130,7 @@ module.exports = (app) => {
     },
     stop: async () => {
       await plugin.connector?.destroy?.();
-      await plugin.routecache?.destroy?.();
+      await plugin.cache?.destroy?.();
       console.log("Stopped KAHU radar Hub")
     },
     schema: () => {
