@@ -203,6 +203,21 @@ If you see *“kahu-signalk requires Node.js 22.5.0 or later”*, switch the Nod
 
 You may see an **ExperimentalWarning** about SQLite from Node; that is expected until the API is stabilized.
 
+## Route Cache Migration Fallback
+
+The plugin now auto-checks route cache schema compatibility at startup and will recreate an incompatible cache database automatically when needed.
+
+If you still see SQLite errors like:
+- `foreign key mismatch - "target_position" referencing "target"`
+
+you can manually reset the plugin cache and restart Signal K:
+
+```bash
+rm ~/.signalk/plugin-config-data/radarhub/routecache.sqlite3
+```
+
+This only clears the local cache used for upload buffering; it does not remove plugin code or configuration.
+
 ### Command typo
 
 Use `--config-dir` (with an **n**), not `--confic-dir`:

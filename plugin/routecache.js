@@ -48,6 +48,7 @@ class Routecache {
       await this.openDB();
       await this.createEmpty();
       await this.migrate();
+      await this.ensureCompatibleSchemaOrRebuild();
       return;
     } catch (e) {
       console.error(e, ". Deleting route cache.");
@@ -59,6 +60,45 @@ class Routecache {
         console.error("Unable to delete route cache: ", this.db_name);
         throw err;
       }
+    }
+  }
+
+  async ensureCompatibleSchemaOrRebuild() {
+    const hasTargetTable = this.doesTableExist("target");
+    const hasTargetPositionTable = this.doesTableExist("target_position");
+    if (!hasTargetTable || !hasTargetPositionTable) return;
+
+    const fkRows = this._all("PRAGMA foreign_key_list(target_position)");
+    const hasExpectedFk = fkRows.some(
+      (row) =>
+        row.from === "target_id" &&
+        row.table === "target" &&
+        row.to === "target_id"
+    );
+
+    if (hasExpectedFk) return;
+
+    console.warn(
+      "Detected incompatible route cache schema (target_position FK mismatch). Rebuilding route cache database."
+    );
+
+    await this.closeDB();
+    await fs.unlink(this.db_name);
+    await this.openDB();
+    await this.createEmpty();
+    await this.migrate();
+
+    const rebuiltFkRows = this._all("PRAGMA foreign_key_list(target_position)");
+    const rebuiltHasExpectedFk = rebuiltFkRows.some(
+      (row) =>
+        row.from === "target_id" &&
+        row.table === "target" &&
+        row.to === "target_id"
+    );
+    if (!rebuiltHasExpectedFk) {
+      throw new Error(
+        "Route cache rebuild completed, but target_position foreign key is still incompatible."
+      );
     }
   }
 
