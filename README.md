@@ -207,7 +207,7 @@ You may see an **ExperimentalWarning** about SQLite from Node; that is expected 
 
 Use `--config-dir` (with an **n**), not `--confic-dir`:
 ```bash
-npm start -- --config-dir /home/bs01743/Projects/KAHU/signalk-server/signalk-server/config
+npm start -- --config-dir /home/signalk-server/config
 ```
 The `--` is needed so npm passes `--config-dir` to the start script.
 
