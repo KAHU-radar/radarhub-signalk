@@ -10,7 +10,50 @@ while (packageDir !== path.dirname(packageDir)
   packageDir = path.dirname(packageDir);
 }
 
-const nmeaRattmRegex = /\$RATTM,(\d{2}),([\d\.\-]+),([\d\.\-]+),([^,]*),([\d\.\-]+),([\d\.\-]+),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),(..*)\*([A-Fa-f0-9]{2})\s*/;
+const parseOptionalFloat = (value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = parseFloat(value);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
+
+const parseRattmSentence = (sentence) => {
+  const [payload] = sentence.split('*');
+  if (!payload) return null;
+
+  const parts = payload.trim().split(',');
+  if (parts[0] !== '$RATTM') return null;
+  if (parts.length < 16) return null;
+
+  const target_id = parseInt(parts[1], 10);
+  const target_distance = parseOptionalFloat(parts[2]);
+  const target_bearing = parseOptionalFloat(parts[3]);
+  const target_bearing_unit = parts[4] || '';
+  const target_speed = parseOptionalFloat(parts[5]);
+  const target_course = parseOptionalFloat(parts[6]);
+  const target_course_unit = parts[7] || '';
+  const target_distance_unit = parts[10] || '';
+  const target_name = parts[12] || '';
+  const target_status = parts[13] || '';
+
+  if (!Number.isFinite(target_id) ||
+      !Number.isFinite(target_distance) ||
+      !Number.isFinite(target_bearing)) {
+    return null;
+  }
+
+  return {
+    target_id,
+    target_distance,
+    target_bearing,
+    target_bearing_unit,
+    target_speed,
+    target_course,
+    target_course_unit,
+    target_distance_unit,
+    target_name,
+    target_status,
+  };
+};
 
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
 
@@ -48,21 +91,24 @@ module.exports = (app) => {
         parser: ({ id, sentence, parts, tags }, session) => {
           if (sentence.startsWith("$RATTL")) {
           } else if (sentence.startsWith("$RATTM")) {
-            const match = nmeaRattmRegex.exec(sentence);
-
-            if (!match) {
+            const parsed = parseRattmSentence(sentence);
+            if (!parsed) {
               console.error("Failed to parse RATTM NMEA sentence: [", sentence, "]");
               return;
             }
-            if (match.length - 1 != 14) {
-              console.log("Only parsed ", (match.length - 1), " fields of RATTM NMEA sentence: [", sentence, "]");
-              return;
-            }
-            
-            const target_id = parseInt(match[1]);
-            const target_distance = parseFloat(match[2]);
-            const target_bearing = parseFloat(match[3]);
-            const target_bearing_unit = match[4];
+
+            const {
+              target_id,
+              target_distance,
+              target_bearing,
+              target_bearing_unit,
+              target_speed,
+              target_course,
+              target_course_unit,
+              target_distance_unit,
+              target_name,
+              target_status,
+            } = parsed;
 
             if (target_bearing_unit === 'R') {
               console.warn("Relative bearings not yet supported, skipping RATTM sentence");
@@ -81,16 +127,11 @@ module.exports = (app) => {
               distance: target_distance,
               bearing: target_bearing,
               bearing_unit: target_bearing_unit,
-              distance_unit: match[10],
+              distance_unit: target_distance_unit,
             }
 
-            const target_speed = parseFloat(match[5]);
-            const target_course = parseFloat(match[6]);
-            const target_course_unit = match[7];
             // target_distance_closes_point_of_approac: parseInt(match[8]),
             // target_time_closes_point_of_approac: parseInt(match[9]),
-            const target_name = match[11];
-            const target_status = match[12];
             
             const now = new Date();
             if (now - plugin.route_updates[target_id] > 60000) {
